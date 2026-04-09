@@ -58,7 +58,8 @@ public partial class RegexApi
     /// with <paramref name="replacement"/>. Supports backreferences ($1, $2, …).
     /// </summary>
     /// <returns>
-    /// The resulting string, or <c>{error:"parse"|"timeout", message:"..."}</c> on failure.
+    /// JSON object: <c>{result:"…"}</c> on success,
+    /// or <c>{error:"parse"|"timeout", message:"…"}</c> on failure.
     /// </returns>
     [JSExport]
     public static string ReplaceAll(string pattern, string input, string replacement, string flags)
@@ -67,7 +68,8 @@ public partial class RegexApi
         {
             var options = ParseFlags(flags);
             var regex = new Regex(pattern, options, MatchTimeout);
-            return regex.Replace(input, replacement);
+            var result = regex.Replace(input, replacement);
+            return JsonSerializer.Serialize(new ReplaceResult(result), RegexJsonContext.Default.ReplaceResult);
         }
         catch (RegexParseException ex)
         {
@@ -122,11 +124,15 @@ internal record MatchResult(
     [property: JsonPropertyName("length")] int Length,
     [property: JsonPropertyName("groups")] List<string> Groups);
 
+internal record ReplaceResult(
+    [property: JsonPropertyName("result")] string Result);
+
 internal record ErrorResult(
     [property: JsonPropertyName("error")]   string Error,
     [property: JsonPropertyName("message")] string Message);
 
 // Trim-safe JSON source generation
 [JsonSerializable(typeof(List<MatchResult>))]
+[JsonSerializable(typeof(ReplaceResult))]
 [JsonSerializable(typeof(ErrorResult))]
 internal partial class RegexJsonContext : JsonSerializerContext { }

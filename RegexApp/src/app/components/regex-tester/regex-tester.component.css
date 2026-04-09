@@ -1,0 +1,244 @@
+:host {
+  display: block;
+}
+
+/* ── layout ─────────────────────────────────────────────────────────────── */
+
+.tester {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  font-family: system-ui, sans-serif;
+  color: #1a1a2e;
+}
+
+.tester__header {
+  margin-bottom: 2rem;
+}
+
+.tester__title {
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.tester__subtitle {
+  margin: 0;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.tester__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── status banners ─────────────────────────────────────────────────────── */
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.status--loading {
+  background: #eef3ff;
+  color: #3451b2;
+}
+
+.status--error {
+  background: #fff0f0;
+  color: #c0392b;
+  border: 1px solid #f5c6c6;
+}
+
+/* ── spinner ────────────────────────────────────────────────────────────── */
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #3451b2;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── fields ─────────────────────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.field__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #555;
+}
+
+.field__row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.field__input,
+.field__textarea {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid #d0d7de;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: "Fira Code", "Cascadia Code", monospace;
+  background: #fafafa;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.field__input:focus,
+.field__textarea:focus {
+  outline: none;
+  border-color: #3451b2;
+  background: #fff;
+}
+
+.field__input--error {
+  border-color: #e74c3c;
+}
+
+.field__textarea {
+  resize: vertical;
+}
+
+.field__error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #e74c3c;
+}
+
+/* ── flags ──────────────────────────────────────────────────────────────── */
+
+.flags {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.flag {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: "Fira Code", "Cascadia Code", monospace;
+  user-select: none;
+}
+
+.flag input {
+  cursor: pointer;
+}
+
+/* ── mode toggle ────────────────────────────────────────────────────────── */
+
+.mode-toggle {
+  display: flex;
+  gap: 0;
+  border: 1.5px solid #d0d7de;
+  border-radius: 6px;
+  overflow: hidden;
+  width: fit-content;
+}
+
+.mode-toggle__btn {
+  padding: 0.45rem 1.25rem;
+  border: none;
+  background: #fafafa;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #555;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mode-toggle__btn + .mode-toggle__btn {
+  border-left: 1.5px solid #d0d7de;
+}
+
+.mode-toggle__btn--active {
+  background: #3451b2;
+  color: #fff;
+}
+
+/* ── results ────────────────────────────────────────────────────────────── */
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.results__count {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+/* ── match cards ────────────────────────────────────────────────────────── */
+
+.match-card {
+  border: 1.5px solid #d0d7de;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.match-card__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.match-card__label {
+  flex-shrink: 0;
+  width: 4.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #888;
+}
+
+.match-card__value {
+  font-family: "Fira Code", "Cascadia Code", monospace;
+  word-break: break-all;
+}
+
+/* ── replace result ─────────────────────────────────────────────────────── */
+
+.replace-result {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid #d0d7de;
+  border-radius: 6px;
+  background: #fafafa;
+  font-family: "Fira Code", "Cascadia Code", monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

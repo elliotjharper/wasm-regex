@@ -1,12 +1,21 @@
 # blazor-wasm-regex
 
-A .NET `[JSExport]` WASM module that exposes regex logic to JavaScript so it can be loaded into any web app (Angular, React, plain JS, …) — no Blazor runtime, no HTML shell, no server required.
+A .NET `[JSExport]` WASM module that exposes regex logic to JavaScript — no Blazor runtime, no HTML shell, no server required — plus a working Angular 19 demo app that consumes it.
 
 ---
 
-## How it works
+## Repository structure
 
-`RegexWasm` is built with the plain `Microsoft.NET.Sdk` targeting `browser-wasm` (not Blazor).
+| Directory | Purpose |
+|---|---|
+| `RegexWasm/` | .NET `browser-wasm` project — builds the WASM module |
+| `RegexApp/` | Angular 19 demo app — loads and exercises the WASM module |
+
+---
+
+## RegexWasm
+
+`RegexWasm` is built with the plain `Microsoft.NET.Sdk` targeting `browser-wasm`.
 It uses `[JSExport]` to expose three static methods directly to JavaScript.
 Publishing it produces a standard `_framework/` folder of static files.
 
@@ -16,15 +25,14 @@ Publishing it produces a standard `_framework/` folder of static files.
 dotnet workload install wasm-tools
 ```
 
-### Build
+### Build & copy to Angular
 
 ```bash
+cd RegexWasm
 dotnet publish -r browser-wasm -c Release
 ```
 
-Output: `bin/Release/net9.0/browser-wasm/AppBundle/`
-
-Copy the `_framework/` subfolder into your Angular (or other) project's static assets.
+The post-publish target in `RegexWasm.csproj` automatically copies the `_framework/` output to `RegexApp/public/_framework/`, making it available as a static asset in the Angular app.
 
 ### Exported API
 
@@ -50,8 +58,16 @@ Returns a JSON array of match objects, or an error object.
 
 #### `RegexApi.ReplaceAll(pattern, input, replacement, flags)`
 
-Returns the replaced string, or an error object (same shape as above).
+Returns a JSON object with the replaced string, or an error object (same shape as above).
 Supports .NET backreference syntax (`$1`, `$2`, `${name}`, etc.).
+
+```json
+// success
+{ "result": "Hello WORLD" }
+
+// error (same shape as FindMatches errors)
+{ "error": "parse", "message": "…" }
+```
 
 #### `RegexApi.Validate(pattern)`
 
@@ -69,46 +85,38 @@ Any combination of the single characters:
 
 Pass `""` for no flags.
 
-### Angular integration (TypeScript)
+---
+
+## RegexApp — Angular demo
+
+A minimal Angular 19 standalone app with a `RegexTesterComponent` that loads `RegexWasm` and lets you run FindMatches, Validate, and ReplaceAll interactively.
+
+### Quick start
+
+1. Publish `RegexWasm` first (copies `_framework/` into `RegexApp/public/`):
+   ```bash
+   cd RegexWasm
+   dotnet publish -r browser-wasm -c Release
+   ```
+
+2. Start the Angular dev server:
+   ```bash
+   cd RegexApp
+   npm install
+   npm start
+   ```
+
+3. Open `http://localhost:4200`.
+
+### How the integration works
+
+`RegexWasmService` (`src/app/services/regex-wasm.service.ts`) uses a `new Function` wrapper around a dynamic `import()` to load `/_framework/dotnet.js` at runtime without the Angular/esbuild bundler trying to resolve it at build time:
 
 ```ts
-// angular.json: add "_framework" folder to assets[]
-// tsconfig: "allowSyntheticDefaultImports": true, "moduleResolution": "bundler"
-
-import { dotnet } from '../assets/_framework/dotnet.js';
-
-let regexApi: { FindMatches: Function; ReplaceAll: Function; Validate: Function } | null = null;
-
-export async function initRegexWasm(): Promise<void> {
-  // create() loads the WASM runtime and returns the interop helpers
-  const { getAssemblyExports, getConfig, runMain } = await dotnet
-    .withConfig({})
-    .create();
-
-  // runMain() starts Program.cs (Task.Delay(Infinite)) — fire-and-forget,
-  // it never resolves, but the [JSExport] methods are immediately usable.
-  runMain();
-
-  const config = getConfig();
-  const exports = await getAssemblyExports(config.mainAssemblyName); // "RegexWasm.dll"
-  regexApi = exports.RegexApi;
-}
-
-export function findMatches(pattern: string, input: string, flags = '') {
-  const raw = regexApi!.FindMatches(pattern, input, flags) as string;
-  return JSON.parse(raw); // array of matches, or { error, message }
-}
-
-export function replaceAll(pattern: string, input: string, replacement: string, flags = '') {
-  return regexApi!.ReplaceAll(pattern, input, replacement, flags) as string;
-  // if the returned string starts with '{' it is an error object; otherwise it is the result
-}
-
-export function validate(pattern: string): string {
-  return regexApi!.Validate(pattern) as string; // "" = valid
-}
+const { dotnet } = await (new Function('return import("/_framework/dotnet.js")')() as Promise<{ dotnet: any }>);
+const { getAssemblyExports, getConfig, runMain } = await dotnet.withConfig({}).create();
+void runMain(); // keeps WASM alive; [JSExport] methods are usable immediately
+const exports = await getAssemblyExports(getConfig().mainAssemblyName);
+this.api = exports['RegexApi'];
 ```
 
-> **Note:** `dotnet.js` is an ES module. Make sure Angular's build is configured to treat
-> it as an external ES module or copy it as a verbatim asset and load it with a dynamic
-> `import()`. Vite/esbuild-based Angular 17+ projects handle this automatically.
