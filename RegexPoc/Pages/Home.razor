@@ -1,0 +1,181 @@
+@page "/"
+@using System.Text.RegularExpressions
+@using Microsoft.AspNetCore.Components.Web
+
+<h1>.NET Regex Tester</h1>
+
+<div class="form-group">
+    <label for="pattern">Pattern</label>
+    <input id="pattern" type="text" @bind="pattern" @bind:event="oninput" placeholder="e.g. (\w+)" />
+</div>
+
+<div class="form-group">
+    <label for="inputText">Input Text</label>
+    <textarea id="inputText" @bind="inputText" @bind:event="oninput" placeholder="Paste your text here..."></textarea>
+</div>
+
+<div class="form-group">
+    <div class="checkbox-group">
+        <label><input type="checkbox" @bind="ignoreCase" /> IgnoreCase</label>
+        <label><input type="checkbox" @bind="multiline" /> Multiline</label>
+        <label><input type="checkbox" @bind="singleline" /> Singleline</label>
+    </div>
+</div>
+
+<div class="btn-row">
+    <button class="btn-find" @onclick="FindMatches">Find Matches</button>
+    <button class="btn-replace" @onclick="ToggleReplace">Replace</button>
+    <button class="btn-clear" @onclick="ClearAll">Clear</button>
+</div>
+
+@if (showReplace)
+{
+    <div class="form-group" style="margin-top:14px;">
+        <label for="replacement">Replacement (supports $1, $2, …)</label>
+        <input id="replacement" type="text" @bind="replacement" @bind:event="oninput" placeholder="e.g. [$1]" />
+    </div>
+    <div class="btn-row">
+        <button class="btn-apply" @onclick="ApplyReplace">Apply Replace</button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="error-card">@errorMessage</div>
+}
+
+@if (hasRun && string.IsNullOrEmpty(errorMessage))
+{
+    <div class="result-section">
+        <h2>Matches (@(matches?.Count ?? 0) found)</h2>
+        @if (matches is not null && matches.Count > 0)
+        {
+            @foreach (Match m in matches)
+            {
+                <div class="match-card">
+                    <strong>@m.Value</strong>
+                    <div class="match-meta">Index: @m.Index &nbsp;|&nbsp; Length: @m.Length</div>
+                    @if (m.Groups.Count > 1)
+                    {
+                        <div class="capture-groups">
+                            @for (int g = 1; g < m.Groups.Count; g++)
+                            {
+                                <div>Group @g: @m.Groups[g].Value</div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <p>No matches found.</p>
+        }
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(replaceResult))
+{
+    <div class="result-section">
+        <h2>Replace Result</h2>
+        <div class="replace-result">@replaceResult</div>
+    </div>
+}
+
+@code {
+    private string pattern = string.Empty;
+    private string inputText = string.Empty;
+    private string replacement = string.Empty;
+    private bool ignoreCase;
+    private bool multiline;
+    private bool singleline;
+    private bool showReplace;
+    private bool hasRun;
+    private string errorMessage = string.Empty;
+    private string replaceResult = string.Empty;
+    private MatchCollection? matches;
+
+    private RegexOptions BuildOptions()
+    {
+        var opts = RegexOptions.None;
+        if (ignoreCase) opts |= RegexOptions.IgnoreCase;
+        if (multiline)  opts |= RegexOptions.Multiline;
+        if (singleline) opts |= RegexOptions.Singleline;
+        return opts;
+    }
+
+    private void FindMatches()
+    {
+        errorMessage = string.Empty;
+        replaceResult = string.Empty;
+        hasRun = false;
+        matches = null;
+
+        if (string.IsNullOrEmpty(pattern))
+        {
+            errorMessage = "Please enter a regex pattern.";
+            return;
+        }
+
+        try
+        {
+            var regex = new Regex(pattern, BuildOptions(), TimeSpan.FromSeconds(2));
+            matches = regex.Matches(inputText);
+            hasRun = true;
+        }
+        catch (RegexParseException ex)
+        {
+            errorMessage = $"Invalid pattern: {ex.Message}";
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            errorMessage = "Match timed out. The pattern may cause catastrophic backtracking.";
+        }
+    }
+
+    private void ToggleReplace()
+    {
+        showReplace = !showReplace;
+    }
+
+    private void ApplyReplace()
+    {
+        errorMessage = string.Empty;
+        replaceResult = string.Empty;
+
+        if (string.IsNullOrEmpty(pattern))
+        {
+            errorMessage = "Please enter a regex pattern.";
+            return;
+        }
+
+        try
+        {
+            var regex = new Regex(pattern, BuildOptions(), TimeSpan.FromSeconds(2));
+            replaceResult = regex.Replace(inputText, replacement);
+        }
+        catch (RegexParseException ex)
+        {
+            errorMessage = $"Invalid pattern: {ex.Message}";
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            errorMessage = "Replace timed out. The pattern may cause catastrophic backtracking.";
+        }
+    }
+
+    private void ClearAll()
+    {
+        pattern = string.Empty;
+        inputText = string.Empty;
+        replacement = string.Empty;
+        ignoreCase = false;
+        multiline = false;
+        singleline = false;
+        showReplace = false;
+        hasRun = false;
+        errorMessage = string.Empty;
+        replaceResult = string.Empty;
+        matches = null;
+    }
+}
