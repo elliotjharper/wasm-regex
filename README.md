@@ -1,21 +1,14 @@
 # blazor-wasm-regex
 
-Two projects in one repo:
-
-| Project | Purpose |
-|---|---|
-| `RegexPoc/` | Standalone Blazor WASM UI — useful for manual testing in a browser |
-| `RegexWasm/` | **Embeddable .NET WASM module** — exposes regex logic to JavaScript via `[JSExport]` so it can be loaded into any web app (Angular, React, plain JS, …) |
+A .NET `[JSExport]` WASM module that exposes regex logic to JavaScript so it can be loaded into any web app (Angular, React, plain JS, …) — no Blazor runtime, no HTML shell, no server required.
 
 ---
 
-## RegexWasm — embeddable module
-
-### How it works
+## How it works
 
 `RegexWasm` is built with the plain `Microsoft.NET.Sdk` targeting `browser-wasm` (not Blazor).
 It uses `[JSExport]` to expose three static methods directly to JavaScript.
-Publishing it produces a standard `_framework/` folder of static files — no server required at runtime.
+Publishing it produces a standard `_framework/` folder of static files.
 
 ### Prerequisites
 
@@ -26,11 +19,10 @@ dotnet workload install wasm-tools
 ### Build
 
 ```bash
-cd RegexWasm
 dotnet publish -r browser-wasm -c Release
 ```
 
-Output: `RegexWasm/bin/Release/net9.0/browser-wasm/AppBundle/`
+Output: `bin/Release/net9.0/browser-wasm/AppBundle/`
 
 Copy the `_framework/` subfolder into your Angular (or other) project's static assets.
 
@@ -120,15 +112,3 @@ export function validate(pattern: string): string {
 > **Note:** `dotnet.js` is an ES module. Make sure Angular's build is configured to treat
 > it as an external ES module or copy it as a verbatim asset and load it with a dynamic
 > `import()`. Vite/esbuild-based Angular 17+ projects handle this automatically.
-
----
-
-## RegexPoc — standalone Blazor tester
-
-```bash
-cd RegexPoc
-dotnet run
-```
-
-Opens a Blazor WASM dev server with a regex test UI (pattern field, input area,
-flag checkboxes, match cards, replace mode).
