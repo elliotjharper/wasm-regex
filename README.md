@@ -88,11 +88,14 @@ import { dotnet } from '../assets/_framework/dotnet.js';
 let regexApi: { FindMatches: Function; ReplaceAll: Function; Validate: Function } | null = null;
 
 export async function initRegexWasm(): Promise<void> {
-  const { getAssemblyExports, getConfig } = await dotnet
+  // create() loads the WASM runtime and returns the interop helpers
+  const { getAssemblyExports, getConfig, runMain } = await dotnet
     .withConfig({})
     .create();
 
-  await dotnet.run();
+  // runMain() starts Program.cs (Task.Delay(Infinite)) — fire-and-forget,
+  // it never resolves, but the [JSExport] methods are immediately usable.
+  runMain();
 
   const config = getConfig();
   const exports = await getAssemblyExports(config.mainAssemblyName); // "RegexWasm.dll"
@@ -105,9 +108,8 @@ export function findMatches(pattern: string, input: string, flags = '') {
 }
 
 export function replaceAll(pattern: string, input: string, replacement: string, flags = '') {
-  const raw = regexApi!.ReplaceAll(pattern, input, replacement, flags) as string;
-  // if raw starts with '{' it is an error object, otherwise it is the result string
-  return raw;
+  return regexApi!.ReplaceAll(pattern, input, replacement, flags) as string;
+  // if the returned string starts with '{' it is an error object; otherwise it is the result
 }
 
 export function validate(pattern: string): string {
