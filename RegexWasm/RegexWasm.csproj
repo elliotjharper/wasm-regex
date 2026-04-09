@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishTrimmed>true</PublishTrimmed>
+  </PropertyGroup>
+
+  <!--
+    After publishing, copy the _framework/ folder produced by the browser-wasm
+    runtime into RegexApp/public/_framework/ so the Angular dev-server and build
+    both serve it as a static asset.
+  -->
+  <Target Name="CopyFrameworkToAngularAssets" AfterTargets="Publish">
+    <PropertyGroup>
+      <_AppBundleDir>$(PublishDir)AppBundle/</_AppBundleDir>
+      <_AngularAssetsDir>$(MSBuildThisFileDirectory)..\RegexApp\public\_framework\</_AngularAssetsDir>
+    </PropertyGroup>
+    <Message Importance="high" Text="Copying _framework/ to $(_AngularAssetsDir)" />
+    <ItemGroup>
+      <_FrameworkFiles Include="$(_AppBundleDir)_framework\**\*" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(_FrameworkFiles)"
+      DestinationFiles="@(_FrameworkFiles->'$(_AngularAssetsDir)%(RecursiveDir)%(Filename)%(Extension)')"
+    />
+  </Target>
+
+</Project>
