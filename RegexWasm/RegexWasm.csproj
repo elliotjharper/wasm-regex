@@ -17,7 +17,7 @@
   -->
   <Target Name="CopyFrameworkToAngularAssets" AfterTargets="Publish">
     <PropertyGroup>
-      <_AppBundleDir>$(PublishDir)AppBundle/</_AppBundleDir>
+      <_AppBundleDir>$(OutDir)AppBundle/</_AppBundleDir>
       <_AngularAssetsDir>$(MSBuildThisFileDirectory)..\RegexApp\public\_framework\</_AngularAssetsDir>
     </PropertyGroup>
     <Message Importance="high" Text="Copying _framework/ to $(_AngularAssetsDir)" />

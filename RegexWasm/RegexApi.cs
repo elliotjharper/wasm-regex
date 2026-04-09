@@ -109,6 +109,7 @@ public partial class RegexApi
         if (flags.Contains('i')) opts |= RegexOptions.IgnoreCase;
         if (flags.Contains('m')) opts |= RegexOptions.Multiline;
         if (flags.Contains('s')) opts |= RegexOptions.Singleline;
+        if (flags.Contains('r')) opts |= RegexOptions.RightToLeft;
         return opts;
     }
 

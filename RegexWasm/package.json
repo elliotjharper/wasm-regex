@@ -1,0 +1,11 @@
+{
+  "name": "regex-wasm",
+  "version": "0.0.0",
+  "scripts": {
+    "install-tools": "dotnet workload install wasm-tools",
+    "build": "dotnet publish -r browser-wasm -c Release"
+  },
+  "private": true,
+  "dependencies": {},
+  "devDependencies": {}
+}

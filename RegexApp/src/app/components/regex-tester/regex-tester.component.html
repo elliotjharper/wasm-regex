@@ -1,8 +1,19 @@
 <div class="tester">
   <header class="tester__header">
-    <h1 class="tester__title">.NET Regex Tester</h1>
-    <p class="tester__subtitle">Powered by .NET WASM via <code>[JSExport]</code></p>
+    <h1 class="tester__title">Regex Tester</h1>
+    <p class="tester__subtitle">
+      Compare .NET and JavaScript regex engines side by side
+    </p>
   </header>
+
+  <!-- ── thread indicator ──────────────────────────────────────────── -->
+  <div class="thread-indicator">
+    <span class="thread-indicator__label">Main thread</span>
+    <div class="thread-indicator__track">
+      <div class="thread-indicator__ball" #ball></div>
+    </div>
+    <span class="thread-indicator__status">If this stops moving, the browser is frozen</span>
+  </div>
 
   @if (loading()) {
     <div class="status status--loading">
@@ -14,6 +25,30 @@
     </div>
   } @else {
     <div class="tester__body">
+      <!-- ── engine toggle ────────────────────────────────────────────── -->
+      <div class="engine-toggle">
+        <span class="engine-toggle__label">Engine</span>
+        <label class="engine-toggle__option">
+          <input
+            type="radio"
+            name="engine"
+            value="dotnet"
+            [checked]="engine() === 'dotnet'"
+            (change)="setEngine('dotnet')"
+          />
+          <span class="engine-toggle__text">.NET</span>
+        </label>
+        <label class="engine-toggle__option">
+          <input
+            type="radio"
+            name="engine"
+            value="js"
+            [checked]="engine() === 'js'"
+            (change)="setEngine('js')"
+          />
+          <span class="engine-toggle__text">JavaScript</span>
+        </label>
+      </div>
 
       <!-- ── pattern row ──────────────────────────────────────────────── -->
       <div class="field">
@@ -30,16 +65,37 @@
           />
           <div class="flags">
             <label class="flag">
-              <input type="checkbox" [checked]="flagI()" (change)="toggleFlagI()" />
+              <input
+                type="checkbox"
+                [checked]="flagI()"
+                (change)="toggleFlagI()"
+              />
               <span>i</span>
             </label>
             <label class="flag">
-              <input type="checkbox" [checked]="flagM()" (change)="toggleFlagM()" />
+              <input
+                type="checkbox"
+                [checked]="flagM()"
+                (change)="toggleFlagM()"
+              />
               <span>m</span>
             </label>
             <label class="flag">
-              <input type="checkbox" [checked]="flagS()" (change)="toggleFlagS()" />
+              <input
+                type="checkbox"
+                [checked]="flagS()"
+                (change)="toggleFlagS()"
+              />
               <span>s</span>
+            </label>
+            <label class="flag" title="RightToLeft (.NET only)">
+              <input
+                type="checkbox"
+                [checked]="flagR()"
+                [disabled]="engine() === 'js'"
+                (change)="toggleFlagR()"
+              />
+              <span [class.flag--disabled]="engine() === 'js'">r</span>
             </label>
           </div>
         </div>
@@ -48,18 +104,47 @@
         }
       </div>
 
+      <!-- ── preset demos ─────────────────────────────────────────────── -->
+      <div class="preset">
+        <button class="preset__btn" (click)="loadPresetRtl()">
+          Try: RightToLeft matching
+        </button>
+        <span class="preset__hint"
+          >Find the <em>last</em> number first — a .NET-only feature</span
+        >
+      </div>
+      <div class="preset">
+        <button class="preset__btn" (click)="loadPresetAnchor()">
+          Try: \A start-of-string anchor
+        </button>
+        <span class="preset__hint"
+          >\A matches only at the start of the string, even with multiline — JS
+          has no equivalent</span
+        >
+      </div>
+      <div class="preset">
+        <button class="preset__btn preset__btn--warn" (click)="loadPresetBacktrack()">
+          Try: Catastrophic backtracking
+        </button>
+        <span class="preset__hint">.NET times out safely — <strong>switching to JS will freeze your browser!</strong></span>
+      </div>
+
       <!-- ── mode toggle ──────────────────────────────────────────────── -->
       <div class="mode-toggle">
         <button
           class="mode-toggle__btn"
           [class.mode-toggle__btn--active]="mode() === 'find'"
           (click)="setMode('find')"
-        >Find</button>
+        >
+          Find
+        </button>
         <button
           class="mode-toggle__btn"
           [class.mode-toggle__btn--active]="mode() === 'replace'"
           (click)="setMode('replace')"
-        >Replace</button>
+        >
+          Replace
+        </button>
       </div>
 
       <!-- ── input textarea ───────────────────────────────────────────── -->
@@ -76,7 +161,7 @@
       </div>
 
       <!-- ── replacement (replace mode only) ─────────────────────────── -->
-      @if (mode() === 'replace') {
+      @if (mode() === "replace") {
         <div class="field">
           <label class="field__label" for="replacement">Replacement</label>
           <input
@@ -92,11 +177,12 @@
 
       <!-- ── results ──────────────────────────────────────────────────── -->
       <div class="results">
-
-        @if (mode() === 'find') {
+        @if (mode() === "find") {
           @if (pattern() && !validationError()) {
             <p class="results__count">
-              {{ matches().length }} match{{ matches().length === 1 ? '' : 'es' }}
+              {{ matches().length }} match{{
+                matches().length === 1 ? "" : "es"
+              }}
             </p>
           }
           @for (m of matches(); track m.index) {
@@ -116,16 +202,20 @@
               @if (m.groups.length > 0) {
                 <div class="match-card__row">
                   <span class="match-card__label">Groups</span>
-                  <span class="match-card__value">{{ m.groups.join(', ') }}</span>
+                  <span class="match-card__value">{{
+                    m.groups.join(", ")
+                  }}</span>
                 </div>
               }
             </div>
           }
         }
 
-        @if (mode() === 'replace' && replaceResult() !== null) {
+        @if (mode() === "replace" && replaceResult() !== null) {
           @if (isError(replaceResult())) {
-            <div class="status status--error">{{ $any(replaceResult()).message }}</div>
+            <div class="status status--error">
+              {{ $any(replaceResult()).message }}
+            </div>
           } @else {
             <div class="field">
               <label class="field__label">Result</label>
@@ -133,7 +223,6 @@
             </div>
           }
         }
-
       </div>
     </div>
   }
