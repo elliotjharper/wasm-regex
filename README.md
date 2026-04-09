@@ -1,1 +1,132 @@
 # blazor-wasm-regex
+
+Two projects in one repo:
+
+| Project | Purpose |
+|---|---|
+| `RegexPoc/` | Standalone Blazor WASM UI — useful for manual testing in a browser |
+| `RegexWasm/` | **Embeddable .NET WASM module** — exposes regex logic to JavaScript via `[JSExport]` so it can be loaded into any web app (Angular, React, plain JS, …) |
+
+---
+
+## RegexWasm — embeddable module
+
+### How it works
+
+`RegexWasm` is built with the plain `Microsoft.NET.Sdk` targeting `browser-wasm` (not Blazor).
+It uses `[JSExport]` to expose three static methods directly to JavaScript.
+Publishing it produces a standard `_framework/` folder of static files — no server required at runtime.
+
+### Prerequisites
+
+```bash
+dotnet workload install wasm-tools
+```
+
+### Build
+
+```bash
+cd RegexWasm
+dotnet publish -r browser-wasm -c Release
+```
+
+Output: `RegexWasm/bin/Release/net9.0/browser-wasm/AppBundle/`
+
+Copy the `_framework/` subfolder into your Angular (or other) project's static assets.
+
+### Exported API
+
+All methods are synchronous and return JSON strings.
+
+#### `RegexApi.FindMatches(pattern, input, flags)`
+
+Returns a JSON array of match objects, or an error object.
+
+```json
+// success
+[
+  { "value": "Hello", "index": 0, "length": 5, "groups": [] },
+  { "value": "world", "index": 6, "length": 5, "groups": [] }
+]
+
+// parse error
+{ "error": "parse", "message": "Invalid pattern …" }
+
+// catastrophic backtracking (> 2 s)
+{ "error": "timeout", "message": "Regex match timed out …" }
+```
+
+#### `RegexApi.ReplaceAll(pattern, input, replacement, flags)`
+
+Returns the replaced string, or an error object (same shape as above).
+Supports .NET backreference syntax (`$1`, `$2`, `${name}`, etc.).
+
+#### `RegexApi.Validate(pattern)`
+
+Returns `""` if the pattern is valid, or the parse error message string.
+
+#### `flags` parameter
+
+Any combination of the single characters:
+
+| char | effect |
+|---|---|
+| `i` | case-insensitive |
+| `m` | multiline (`^`/`$` match line boundaries) |
+| `s` | single-line / dotall (`.` matches `\n`) |
+
+Pass `""` for no flags.
+
+### Angular integration (TypeScript)
+
+```ts
+// angular.json: add "_framework" folder to assets[]
+// tsconfig: "allowSyntheticDefaultImports": true, "moduleResolution": "bundler"
+
+import { dotnet } from '../assets/_framework/dotnet.js';
+
+let regexApi: { FindMatches: Function; ReplaceAll: Function; Validate: Function } | null = null;
+
+export async function initRegexWasm(): Promise<void> {
+  const { getAssemblyExports, getConfig } = await dotnet
+    .withConfig({})
+    .create();
+
+  await dotnet.run();
+
+  const config = getConfig();
+  const exports = await getAssemblyExports(config.mainAssemblyName); // "RegexWasm.dll"
+  regexApi = exports.RegexApi;
+}
+
+export function findMatches(pattern: string, input: string, flags = '') {
+  const raw = regexApi!.FindMatches(pattern, input, flags) as string;
+  return JSON.parse(raw); // array of matches, or { error, message }
+}
+
+export function replaceAll(pattern: string, input: string, replacement: string, flags = '') {
+  const raw = regexApi!.ReplaceAll(pattern, input, replacement, flags) as string;
+  // if raw starts with '{' it is an error object, otherwise it is the result string
+  return raw;
+}
+
+export function validate(pattern: string): string {
+  return regexApi!.Validate(pattern) as string; // "" = valid
+}
+```
+
+> **Note:** `dotnet.js` is an ES module. Make sure Angular's build is configured to treat
+> it as an external ES module or copy it as a verbatim asset and load it with a dynamic
+> `import()`. Vite/esbuild-based Angular 17+ projects handle this automatically.
+
+---
+
+## RegexPoc — standalone Blazor tester
+
+```bash
+cd RegexPoc
+dotnet run
+```
+
+Opens a Blazor WASM dev server with a regex test UI (pattern field, input area,
+flag checkboxes, match cards, replace mode).
