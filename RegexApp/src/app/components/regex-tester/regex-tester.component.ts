@@ -1,6 +1,7 @@
 import {
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   OnDestroy,
@@ -53,15 +54,6 @@ export class RegexTesterComponent implements OnInit, OnDestroy {
       (this.flagR() ? 'r' : ''),
   );
 
-  readonly ready = computed(() => !this.loading() && this.loadError() === null);
-
-  readonly validationError = computed((): string => {
-    if (!this.ready() || !this.pattern()) return '';
-    if (this.engine() === 'js')
-      return this.wasm.validateJs(this.pattern(), this.jsFlags());
-    return this.wasm.validate(this.pattern());
-  });
-
   readonly jsFlags = computed(
     () =>
       (this.flagI() ? 'i' : '') +
@@ -69,37 +61,99 @@ export class RegexTesterComponent implements OnInit, OnDestroy {
       (this.flagS() ? 's' : ''),
   );
 
-  readonly matches = computed((): MatchResult[] => {
-    if (!this.ready() || this.validationError() || !this.pattern()) return [];
-    const result =
-      this.engine() === 'js'
-        ? this.wasm.findMatchesJs(this.pattern(), this.input(), this.jsFlags())
-        : this.wasm.findMatches(this.pattern(), this.input(), this.flags());
-    return isRegexError(result) ? [] : result;
-  });
+  readonly ready = computed(() => !this.loading() && this.loadError() === null);
 
-  readonly replaceResult = computed((): string | RegexError | null => {
-    if (
-      !this.ready() ||
-      this.mode() !== 'replace' ||
-      !this.pattern() ||
-      this.validationError()
-    )
-      return null;
-    return this.engine() === 'js'
-      ? this.wasm.replaceAllJs(
-          this.pattern(),
-          this.input(),
-          this.replacement(),
-          this.jsFlags(),
-        )
-      : this.wasm.replaceAll(
-          this.pattern(),
-          this.input(),
-          this.replacement(),
-          this.flags(),
+  // ── async results (driven by effects) ──────────────────────────────────────
+  readonly validationError = signal('');
+  readonly matches = signal<MatchResult[]>([]);
+  readonly matchError = signal<RegexError | null>(null);
+  readonly replaceResult = signal<string | RegexError | null>(null);
+  readonly matching = signal(false);
+  readonly replacing = signal(false);
+
+  constructor() {
+    // validation effect
+    effect(() => {
+      if (!this.ready() || !this.pattern()) {
+        this.validationError.set('');
+        return;
+      }
+      const eng = this.engine();
+      const pat = this.pattern();
+      if (eng === 'js') {
+        this.validationError.set(this.wasm.validateJs(pat, this.jsFlags()));
+      } else {
+        this.wasm.validate(pat).then((v) => this.validationError.set(v));
+      }
+    });
+
+    // matches effect
+    effect(() => {
+      const validErr = this.validationError();
+      if (!this.ready() || validErr || !this.pattern()) {
+        this.matches.set([]);
+        this.matchError.set(null);
+        return;
+      }
+      this.matchError.set(null);
+      const eng = this.engine();
+      const pat = this.pattern();
+      const inp = this.input();
+      if (eng === 'js') {
+        this.matching.set(false);
+        const result = this.wasm.findMatchesJs(pat, inp, this.jsFlags());
+        if (isRegexError(result)) {
+          this.matches.set([]);
+          this.matchError.set(result);
+        } else {
+          this.matches.set(result);
+          this.matchError.set(null);
+        }
+      } else {
+        this.matching.set(true);
+        this.wasm.findMatches(pat, inp, this.flags()).then((result) => {
+          this.matching.set(false);
+          if (isRegexError(result)) {
+            this.matches.set([]);
+            this.matchError.set(result);
+          } else {
+            this.matches.set(result);
+            this.matchError.set(null);
+          }
+        });
+      }
+    });
+
+    // replace effect
+    effect(() => {
+      const validErr = this.validationError();
+      if (
+        !this.ready() ||
+        this.mode() !== 'replace' ||
+        !this.pattern() ||
+        validErr
+      ) {
+        this.replaceResult.set(null);
+        return;
+      }
+      const eng = this.engine();
+      const pat = this.pattern();
+      const inp = this.input();
+      const rep = this.replacement();
+      if (eng === 'js') {
+        this.replacing.set(false);
+        this.replaceResult.set(
+          this.wasm.replaceAllJs(pat, inp, rep, this.jsFlags()),
         );
-  });
+      } else {
+        this.replacing.set(true);
+        this.wasm.replaceAll(pat, inp, rep, this.flags()).then((result) => {
+          this.replacing.set(false);
+          this.replaceResult.set(result);
+        });
+      }
+    });
+  }
 
   // ── lifecycle ──────────────────────────────────────────────────────────────
   async ngOnInit(): Promise<void> {

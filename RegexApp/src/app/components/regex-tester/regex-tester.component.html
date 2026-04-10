@@ -12,7 +12,9 @@
     <div class="thread-indicator__track">
       <div class="thread-indicator__ball" #ball></div>
     </div>
-    <span class="thread-indicator__status">If this stops moving, the browser is frozen</span>
+    <span class="thread-indicator__status"
+      >If this stops moving, the browser is frozen</span
+    >
   </div>
 
   @if (loading()) {
@@ -123,10 +125,16 @@
         >
       </div>
       <div class="preset">
-        <button class="preset__btn preset__btn--warn" (click)="loadPresetBacktrack()">
+        <button
+          class="preset__btn preset__btn--warn"
+          (click)="loadPresetBacktrack()"
+        >
           Try: Catastrophic backtracking
         </button>
-        <span class="preset__hint">.NET times out safely — <strong>switching to JS will freeze your browser!</strong></span>
+        <span class="preset__hint"
+          >.NET times out safely —
+          <strong>switching to JS will freeze your browser!</strong></span
+        >
       </div>
 
       <!-- ── mode toggle ──────────────────────────────────────────────── -->
@@ -177,8 +185,17 @@
 
       <!-- ── results ──────────────────────────────────────────────────── -->
       <div class="results">
-        @if (mode() === "find") {
-          @if (pattern() && !validationError()) {
+        @if (mode() === "find") {          @if (matching()) {
+            <div class="status status--loading">
+              <span class="spinner"></span> Running .NET regex…
+            </div>
+          }          @if (matchError()) {
+            <div class="status status--error">
+              {{ matchError()!.error === "timeout" ? "Timed out" : "Error" }}:
+              {{ matchError()!.message }}
+            </div>
+          }
+          @if (pattern() && !validationError() && !matchError()) {
             <p class="results__count">
               {{ matches().length }} match{{
                 matches().length === 1 ? "" : "es"
@@ -211,16 +228,23 @@
           }
         }
 
-        @if (mode() === "replace" && replaceResult() !== null) {
-          @if (isError(replaceResult())) {
-            <div class="status status--error">
-              {{ $any(replaceResult()).message }}
+        @if (mode() === "replace") {
+          @if (replacing()) {
+            <div class="status status--loading">
+              <span class="spinner"></span> Running .NET regex…
             </div>
-          } @else {
-            <div class="field">
-              <label class="field__label">Result</label>
-              <pre class="replace-result">{{ replaceResult() }}</pre>
-            </div>
+          }
+          @if (replaceResult() !== null) {
+            @if (isError(replaceResult())) {
+              <div class="status status--error">
+                {{ $any(replaceResult()).message }}
+              </div>
+            } @else {
+              <div class="field">
+                <label class="field__label">Result</label>
+                <pre class="replace-result">{{ replaceResult() }}</pre>
+              </div>
+            }
           }
         }
       </div>
